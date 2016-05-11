@@ -1,0 +1,75 @@
+---
+
+- name: Pre-flight setup
+  hosts: centos
+  tags: setup
+  pre_tasks:
+  - name: Enable permissive selinux
+    selinux:
+      policy: targeted
+      state: permissive
+    when: ansible_os_family == 'RedHat'
+  - name: Stop firewalld
+    service:
+      name: firewalld
+      state: stopped
+      enabled: no
+    when: ansible_os_family == 'RedHat'
+
+  roles:
+    - role: repo-epel
+    - role: glusterfs
+
+- name: Set up bricks directories
+  hosts: gluster-servers
+  tags: bricks
+  tasks:
+    - name: Create brick directory
+      file:
+        dest: '{{ gluster_brick_dir }}'
+        state: directory
+
+- name: Create volumes
+  hosts: gluster-servers
+  tags: bricks
+  serial: 1
+  tasks:
+
+    - name: Create volume
+      gluster_volume:
+        state: present
+        name: '{{ item }}'
+        replicas: 2
+        brick: '{{ gluster_brick_dir }}/{{ item }}'
+        cluster: '{{ gluster_servers }}'
+        start_on_create: yes
+        options:
+          network.ping-timeout:  '5'
+          performance.flush-behind: 'off'
+          nfs.disable: 'on'
+        force: yes   # create on root partition
+      with_items: gluster_bricks
+
+    - name: Start volume
+      gluster_volume:
+        state: started
+        name: '{{ item }}'
+      with_items: gluster_bricks
+
+- name: Mount volume
+  hosts: gluster-clients
+  tags: mount
+  tasks:
+  - name: Create mount directory
+    file:
+      dest: '/mnt/{{ item }}'
+      state: directory
+    with_items: gluster_bricks
+
+  - name: Mount volume (from local machine)
+    mount:
+      src: '{{ ansible_hostname }}:/{{ item }}'
+      name: '/mnt/{{ item }}'
+      fstype: glusterfs
+      state: mounted
+    with_items: gluster_bricks

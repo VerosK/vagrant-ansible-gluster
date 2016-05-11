@@ -1,0 +1,4 @@
+---
+gluster_servers: left,right
+gluster_brick_dir: /data/bricks
+gluster_bricks: [ first, second ]

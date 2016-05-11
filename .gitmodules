@@ -1,0 +1,6 @@
+[submodule "roles/glusterfs"]
+	path = roles/glusterfs
+	url = https://github.com/geerlingguy/ansible-role-glusterfs
+[submodule "roles/repo-epel"]
+	path = roles/repo-epel
+	url = https://github.com/geerlingguy/ansible-role-repo-epel
